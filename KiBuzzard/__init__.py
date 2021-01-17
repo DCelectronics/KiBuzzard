@@ -64,7 +64,7 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
         self.last_str = ""
         self.load_from_ini()
         self._pcbnew_frame = None
-
+        self.kicad_version = pcbnew.GetBuildVersion()
 
     def defaults(self):
         pass
@@ -92,12 +92,17 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
             self._pcbnew_frame = [x for x in wx.GetTopLevelWindows() if 'pcbnew' in x.GetTitle().lower() and not 'python' in x.GetTitle().lower()][0]
 
         
-        def run_buzzard(str):
+        def run_buzzard(str, kicad_ver):
             import re
 
             self.last_str = str
+            self.kicad_version = kicad_ver
+            
+            if kicad_ver.find("5.99") != -1: 
+                str = str + ' -o ki -stdout'
+            else:
+                str = str + ' -o ki-5.1.x -stdout'
 
-            str = str + ' -o ki -stdout'
             args = [a.strip('"') for a in re.findall('".+?"|\S+', str)]
 
             # Execute Buzzard
@@ -109,20 +114,30 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
             if len(error_line) > 0:
                 wx.MessageBox(error_line[0], 'Error', wx.OK | wx.ICON_ERROR)
 
-            else:        
-                # Copy footprint into clipboard
-                process = subprocess.Popen(['xclip', '-sel', 'clip', '-noutf8'], stdin=subprocess.PIPE)
-                process.communicate(stdout)
+            else:   
+                if kicad_ver.find("5.99") != -1: 
+                    # Copy footprint into clipboard
+                    process = subprocess.Popen(['xclip', '-sel', 'clip', '-noutf8'], stdin=subprocess.PIPE)
+                    process.communicate(stdout)
+                else:
+                    try:
+                        os.mkdir(os.environ['KIPRJMOD'] + "/buzzard_labels.pretty")
+                    except:
+                        pass
+
+                    fout = open(os.environ['KIPRJMOD'] + "/buzzard_labels.pretty/test.kicad_mod", "w+")
+                    fout.write(stdout.decode('utf-8'))
+                    fout.close()
+                    
+                    # pcbnew.
+                    # pcbnew.FootprintLoad()
 
                 # Save copy of string
                 self.save()
 
                 dlg.EndModal(wx.ID_OK)
 
-                 
-
-        
-        dlg = Dialog(self._pcbnew_frame, self.last_str, run_buzzard)
+        dlg = Dialog(self._pcbnew_frame, self.last_str, self.kicad_version, run_buzzard)
         try:
             if dlg.ShowModal() == wx.ID_OK:
                 # Set focus to main window and execute a Paste operation
