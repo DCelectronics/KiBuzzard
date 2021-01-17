@@ -45,7 +45,7 @@ $ sudo apt install xclip
 
 # Usage
 
-Since, KiCad stable version doesn't support system clipboard operations, the footprint is added the center of board, for nightly users, it is automatically copied onto the screen.
+Since, KiCad stable version doesn't support system clipboard operations, the footprint is placed at (0, 0). Please navigate there and move the label to where you want to place it
 
 Refer to [Buzzard](https://github.com/sparkfunX/Buzzard) docs for options
 ## Licence and credits
