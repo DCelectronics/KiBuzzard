@@ -140,11 +140,12 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
                     board = pcbnew.GetBoard()
                     footprint = pcbnew.FootprintLoad(filepath, self.buzzard_label_module_name)
 
-                    board_bounds = board.GetBoardEdgesBoundingBox()
-                    board_center_x = (pcbnew.ToMM(board_bounds.GetLeft()) + pcbnew.ToMM(board_bounds.GetRight())) / 2
-                    board_center_y = (pcbnew.ToMM(board_bounds.GetTop()) + pcbnew.ToMM(board_bounds.GetBottom())) / 2
-                    footprint.SetPosition(pcbnew.wxPointMM(board_center_x, board_center_y))
+                    # board_bounds = board.GetBoardEdgesBoundingBox()
+                    # board_center_x = (pcbnew.ToMM(board_bounds.GetLeft()) + pcbnew.ToMM(board_bounds.GetRight())) / 2
+                    # board_center_y = (pcbnew.ToMM(board_bounds.GetTop()) + pcbnew.ToMM(board_bounds.GetBottom())) / 2
+                    # footprint.SetPosition(pcbnew.wxPointMM(board_center_x, board_center_y))
 
+                    footprint.SetPosition(pcbnew.wxPoint(0, 0))
                     board.Add(footprint)
                     pcbnew.Refresh()
 
