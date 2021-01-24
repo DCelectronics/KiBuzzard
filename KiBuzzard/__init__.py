@@ -9,8 +9,6 @@ import wx
 import wx.aui
 from wx import FileConfig
 
-#import pyperclip
-
 import pcbnew
 from .dialog.dialog import Dialog
 
@@ -65,8 +63,7 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
         icon_dir = os.path.dirname(os.path.dirname(__file__))
         self.icon_file_name = os.path.join(icon_dir, 'icon.png')
         self.description = "Create Labels"
-        self.last_str = ""
-        self.load_from_ini()
+        self.config = FileConfig(localFilename=self.config_file)
         self._pcbnew_frame = None
         self.kicad_version = pcbnew.GetBuildVersion()
         self.buzzard_label_library_path = "/buzzard_labels.pretty"
@@ -74,20 +71,6 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
 
     def defaults(self):
         pass
-
-    def load_from_ini(self):
-        """Init from config file if it exists."""
-        if not os.path.isfile(self.config_file):
-            return
-        f = FileConfig(localFilename=self.config_file)
-        f.SetPath('/general')
-        self.last_str = f.Read('last_str', self.last_str)
-
-    def save(self):
-        f = FileConfig(localFilename=self.config_file)
-        f.SetPath('/general')
-        f.Write('last_str', self.last_str)
-        f.Flush()
 
     def Run(self):
         buzzard_script = os.path.join(self.buzzard_path, 'buzzard.py')
@@ -149,12 +132,9 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
                     board.Add(footprint)
                     pcbnew.Refresh()
 
-                # Save copy of string
-                self.save()
-
                 dlg.EndModal(wx.ID_OK)
 
-        dlg = Dialog(self._pcbnew_frame, self.last_str, run_buzzard)
+        dlg = Dialog(self._pcbnew_frame, self.config, self.buzzard_path, run_buzzard)
         try:
             if dlg.ShowModal() == wx.ID_OK:
                 # Set focus to main window and execute a Paste operation
@@ -170,6 +150,7 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
                 #     keyinput.MouseMove(coord.Get())
 
         finally:
+            self.config.Flush()
             dlg.Destroy()
 
 
