@@ -94,7 +94,7 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
 
         if self._pcbnew_frame is None:
             self._pcbnew_frame = [x for x in wx.GetTopLevelWindows(
-            ) if 'pcbnew' in x.GetTitle().lower() and not 'python' in x.GetTitle().lower()][0]
+            ) if 'pcbnew' in x.GetTitle().lower() and not 'python3' in x.GetTitle().lower()][0]
 
         def run_buzzard(str):
             import re
@@ -110,7 +110,7 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
 
             # Execute Buzzard
             process = subprocess.Popen(
-                ['python', buzzard_script] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                ['python3', buzzard_script] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
 
             # check for errors
