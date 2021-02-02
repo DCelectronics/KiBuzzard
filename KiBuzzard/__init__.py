@@ -82,8 +82,6 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
         def run_buzzard(str):
             import re
 
-            self.last_str = str
-
             if self.kicad_version.find("5.99") != -1:
                 str = str + ' -o ki -stdout'
             else:
@@ -95,7 +93,7 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
             process = subprocess.Popen(
                 ['python3', buzzard_script] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
-
+            
             # check for errors
             error_line = [s for s in stderr.decode(
                 'utf8').split('\n') if 'error' in s]
@@ -122,11 +120,6 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
 
                     board = pcbnew.GetBoard()
                     footprint = pcbnew.FootprintLoad(filepath, self.buzzard_label_module_name)
-
-                    # board_bounds = board.GetBoardEdgesBoundingBox()
-                    # board_center_x = (pcbnew.ToMM(board_bounds.GetLeft()) + pcbnew.ToMM(board_bounds.GetRight())) / 2
-                    # board_center_y = (pcbnew.ToMM(board_bounds.GetTop()) + pcbnew.ToMM(board_bounds.GetBottom())) / 2
-                    # footprint.SetPosition(pcbnew.wxPointMM(board_center_x, board_center_y))
 
                     footprint.SetPosition(pcbnew.wxPoint(0, 0))
                     board.Add(footprint)
