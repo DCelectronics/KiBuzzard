@@ -1,19 +1,15 @@
 import os
-from re import escape
 import sys
 import subprocess
 import threading
 import time
-
+import tempfile
 import wx
 import wx.aui
 from wx import FileConfig
 
-#import pyperclip
-
 import pcbnew
-from .dialog.dialog import Dialog
-
+from .dialog import Dialog
 
 def check_for_bom_button():
     # From Miles McCoo's blog
@@ -50,11 +46,9 @@ def check_for_bom_button():
             top_tb.Bind(wx.EVT_TOOL, callback, id=button_wx_item_id)
             top_tb.Realize()
 
-
 class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
     config_file = os.path.join(os.path.dirname(__file__), '..', 'config.ini')
-    buzzard_path = os.path.join(os.path.dirname(
-        __file__), '..', 'deps', 'buzzard')
+    buzzard_path = os.path.join(os.path.dirname(__file__), '..', 'deps', 'buzzard')
 
     def __init__(self):
         super(KiBuzzardPlugin, self).__init__()
@@ -65,41 +59,24 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
         icon_dir = os.path.dirname(os.path.dirname(__file__))
         self.icon_file_name = os.path.join(icon_dir, 'icon.png')
         self.description = "Create Labels"
-        self.last_str = ""
-        self.load_from_ini()
+        self.config = FileConfig(localFilename=self.config_file)
         self._pcbnew_frame = None
         self.kicad_version = pcbnew.GetBuildVersion()
         self.buzzard_label_library_path = "/buzzard_labels.pretty"
         self.buzzard_label_module_name = "buzzard_labels"
 
+
     def defaults(self):
         pass
-
-    def load_from_ini(self):
-        """Init from config file if it exists."""
-        if not os.path.isfile(self.config_file):
-            return
-        f = FileConfig(localFilename=self.config_file)
-        f.SetPath('/general')
-        self.last_str = f.Read('last_str', self.last_str)
-
-    def save(self):
-        f = FileConfig(localFilename=self.config_file)
-        f.SetPath('/general')
-        f.Write('last_str', self.last_str)
-        f.Flush()
 
     def Run(self):
         buzzard_script = os.path.join(self.buzzard_path, 'buzzard.py')
 
         if self._pcbnew_frame is None:
-            self._pcbnew_frame = [x for x in wx.GetTopLevelWindows(
-            ) if 'pcbnew' in x.GetTitle().lower() and not 'python3' in x.GetTitle().lower()][0]
+            self._pcbnew_frame = [x for x in wx.GetTopLevelWindows() if 'pcbnew' in x.GetTitle().lower() and not 'python3' in x.GetTitle().lower()][0]
 
         def run_buzzard(str):
             import re
-
-            self.last_str = str
 
             if self.kicad_version.find("5.99") != -1:
                 str = str + ' -o ki -stdout'
@@ -107,26 +84,38 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
                 str = str + ' -o ki-5.1.x -stdout'
 
             args = [a.strip('"') for a in re.findall('".+?"|\S+', str)]
+            if sys.platform.startswith('win'):
+                args = [re.sub('([<>])', r'^\1', a) for a in args] # escape '<' or '>' with a caret, '^<'
 
             # Execute Buzzard
-            process = subprocess.Popen(
-                ['python3', buzzard_script] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = None
+            if sys.platform.startswith('linux') or sys.platform == 'darwin':
+                process = subprocess.Popen(['python3', buzzard_script] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            else:
+                process = subprocess.Popen(['python3', buzzard_script] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             stdout, stderr = process.communicate()
+            if stderr:
+                wx.MessageBox(stderr, 'Error', wx.OK | wx.ICON_ERROR)
 
             # check for errors
-            error_line = [s for s in stderr.decode(
-                'utf8').split('\n') if 'error' in s]
+            error_line = [s for s in stderr.decode('utf8').split('\n') if 'error' in s]
             if len(error_line) > 0:
                 wx.MessageBox(error_line[0], 'Error', wx.OK | wx.ICON_ERROR)
 
             else:
                 if self.kicad_version.find("5.99") != -1:
                     # Copy footprint into clipboard
-                    process = subprocess.Popen(
-                        ['xclip', '-sel', 'clip', '-noutf8'], stdin=subprocess.PIPE)
+                    if sys.platform.startswith('linux'):
+                        clip_args = ['xclip', '-sel', 'clip', '-noutf8']
+                    elif sys.platform == 'darwin':
+                        clip_args = ['pbcopy']
+                    else:
+                        clip_args = ['clip.exe']
+                
+                    process = subprocess.Popen(clip_args, stdin=subprocess.PIPE)
                     process.communicate(stdout)
                 else:
-                    filepath = os.environ['KIPRJMOD'] + "/" + self.buzzard_label_library_path
+                    filepath = tempfile.gettempdir() + "/" + self.buzzard_label_library_path
 
                     try:
                         os.mkdir(filepath)
@@ -140,21 +129,13 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
                     board = pcbnew.GetBoard()
                     footprint = pcbnew.FootprintLoad(filepath, self.buzzard_label_module_name)
 
-                    # board_bounds = board.GetBoardEdgesBoundingBox()
-                    # board_center_x = (pcbnew.ToMM(board_bounds.GetLeft()) + pcbnew.ToMM(board_bounds.GetRight())) / 2
-                    # board_center_y = (pcbnew.ToMM(board_bounds.GetTop()) + pcbnew.ToMM(board_bounds.GetBottom())) / 2
-                    # footprint.SetPosition(pcbnew.wxPointMM(board_center_x, board_center_y))
-
                     footprint.SetPosition(pcbnew.wxPoint(0, 0))
                     board.Add(footprint)
                     pcbnew.Refresh()
 
-                # Save copy of string
-                self.save()
-
                 dlg.EndModal(wx.ID_OK)
 
-        dlg = Dialog(self._pcbnew_frame, self.last_str, run_buzzard)
+        dlg = Dialog(self._pcbnew_frame, self.config, self.buzzard_path, run_buzzard)
         try:
             if dlg.ShowModal() == wx.ID_OK:
                 # Set focus to main window and execute a Paste operation
@@ -164,12 +145,8 @@ class KiBuzzardPlugin(pcbnew.ActionPlugin, object):
                 if self.kicad_version.find("5.99") != -1:
                     keyinput = wx.UIActionSimulator()
                     keyinput.Char(ord("V"), wx.MOD_CONTROL)
-                # else:
-                #     keyinput = wx.UIActionSimulator()
-                #     coord = wx.Point2D(pcbnew.ToMM(pcbnew.wxPointMM(100, 100)))
-                #     keyinput.MouseMove(coord.Get())
-
         finally:
+            self.config.Flush()
             dlg.Destroy()
 
 
