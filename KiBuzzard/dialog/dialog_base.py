@@ -42,14 +42,14 @@ class KiBuzzardDialog ( wx.Dialog ):
         labelFlexSizer.SetFlexibleDirection( wx.BOTH )
         labelFlexSizer.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
 
-        labelStartComboBoxChoices = [ wx.EmptyString, u"[", u"(", u"/", u"<" ]
+        labelStartComboBoxChoices = [ wx.EmptyString, u"[", u"(", u"/", u"\\", u"<" ]
         self.labelStartComboBox = wx.ComboBox( self.guiPanel, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, labelStartComboBoxChoices, wx.CB_READONLY )
         labelFlexSizer.Add( self.labelStartComboBox, 0, wx.ALL, 5 )
 
         self.labelEdit = wx.TextCtrl( self.guiPanel, wx.ID_ANY, u" ", wx.DefaultPosition, wx.DefaultSize, 0 )
         labelFlexSizer.Add( self.labelEdit, 0, wx.ALL|wx.EXPAND, 5 )
 
-        labelEndComboBoxChoices = [ wx.EmptyString, u"]", u")", u"/", u">" ]
+        labelEndComboBoxChoices = [ wx.EmptyString, u"]", u")", u"/", u"\\", u">" ]
         self.labelEndComboBox = wx.ComboBox( self.guiPanel, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, labelEndComboBoxChoices, wx.CB_READONLY )
         labelFlexSizer.Add( self.labelEndComboBox, 0, wx.ALL, 5 )
 
